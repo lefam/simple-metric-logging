@@ -1,28 +1,18 @@
-const { dateDiffInHours } = require('./helpers');
+const { isStrictlyNumeric } = require('./helpers');
 
-const store = {};
+const storeService = require('./services/store');
 
-function clearOldEntries(key) {
-  const keyRecords = store[key];
-  let clearUpToIndexExclusive = -1;
-
-  for (let i = 0; i < keyRecords.length; i++) {
-    const now = new Date();
-    if (dateDiffInHours(now, keyRecords[i][0]) <= 1) {
-      clearUpToIndexExclusive = i;
-    }
-  }
-
-  if (clearUpToIndexExclusive > 0) {
-    store[key].splice(0, clearUpToIndexExclusive);
-  }
-}
-
+/**
+ * Implements the API endpoint which registers key metrics
+ *
+ * @apiParam (path) {String} key The given key
+ * @apiParam (body) {String} value The value to register
+ */
 async function postKey(ctx) {
   const { key } = ctx.params;
   const { value } = ctx.request.body;
 
-  if (value === undefined || isNaN(value) || value < 0) {
+  if (!isStrictlyNumeric(value)) {
     ctx.status = 400;
     ctx.body = {
       error: 'Please pass a valid number',
@@ -30,33 +20,22 @@ async function postKey(ctx) {
     return;
   }
 
-  if (!store[key]) {
-    store[key] = [];
-  } else {
-    clearOldEntries(key);
-  }
-
-  store[key].push([new Date(), value]);
+  storeService.postKeyValue(key, value);
   ctx.body = {};
 }
 
+/**
+ * Implements the API endpoint which returns the sum of all metrics reported
+ * for a key.
+ *
+ * @apiParam (path) {String} key The given key
+ */
 async function getKeySum(ctx) {
   const { key } = ctx.params;
 
-  if (!key) {
-    ctx.status = 400;
-    ctx.body = {
-      error: 'Please pass a valid key',
-    };
-  } else if (!store[key]) {
-    ctx.body = {
-      value: 0,
-    };
-  } else {
-    ctx.body = {
-      value: store[key].reduce((acc, elem) => acc + elem[1], 0),
-    };
-  }
+  ctx.body = {
+    value: storeService.getKeySum(key),
+  };
 }
 
 module.exports = {

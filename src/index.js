@@ -7,10 +7,14 @@ const { getKeySum, postKey } = require('./routes');
 const app = new Koa();
 const router = new Router();
 
-app.use(async (ctx, next) => {
-  console.log('Log: ', ctx.method, ctx.path);
-  await next();
-});
+if (process.env.NODE_ENV !== 'production') {
+  // This is simple middleware which shows request method and path
+  // We only enable it for development.
+  app.use(async (ctx, next) => {
+    console.log('Log: ', ctx.method, ctx.path);
+    await next();
+  });
+}
 
 router.post('/metric/:key', postKey);
 router.get('/metric/:key/sum', getKeySum);
